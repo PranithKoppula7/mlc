@@ -1,4 +1,4 @@
-# MLC Tensor Compiler - Phase 1 Complete
+# MLC Tensor Compiler
 
 A lightweight CUDA-accelerated tensor compiler for efficient tensor operations.
 

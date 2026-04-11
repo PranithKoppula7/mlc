@@ -16,7 +16,8 @@ Quick Start:
 """
 
 try:
-    from .mlc_core import Tensor, Device, DataType, zeros, ones, empty, full
+    from .mlc_core import (Tensor, Device, DataType, zeros, ones, empty, full,
+                            set_use_jit, get_use_jit, enable_jit, disable_jit)
 except ImportError as e:
     raise ImportError(
         f"mlc_core module not found: {e}\n"
@@ -31,7 +32,7 @@ except ImportError as e:
 
 __version__ = "0.1.0"
 __all__ = ["Tensor", "Device", "DataType", "zeros", "ones", "empty", "full", 
-           "cpu", "cuda"]
+           "cpu", "cuda", "set_use_jit", "get_use_jit", "enable_jit", "disable_jit"]
 
 # Convenience functions
 def cpu(data=None, shape=None):

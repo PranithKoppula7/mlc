@@ -1,4 +1,5 @@
 #include "executor.h"
+#include "jit_executor.h"
 #include "../core/broadcast.h"
 #include <stdexcept>
 #include <cstring>
@@ -6,9 +7,24 @@
 
 namespace mlc {
 
+bool Executor::use_jit_ = true;
+
+std::unique_ptr<JITExecutor>& Executor::GetJITExecutor() {
+    static std::unique_ptr<JITExecutor> jit_executor = std::make_unique<JITExecutor>();
+    return jit_executor;
+}
+
+void Executor::SetUseJIT(bool use_jit) {
+    use_jit_ = use_jit;
+}
+
+bool Executor::GetUseJIT() {
+    return use_jit_;
+}
+
 void Executor::execute_add(const Tensor& a, const Tensor& b, Tensor& output) {
     if (a.device() != Device::CPU || b.device() != Device::CPU) {
-        throw std::invalid_argument("Phase 1 only supports CPU execution");
+        throw std::invalid_argument("Phase 2 only supports CPU execution");
     }
     
     // Check broadcast compatibility
@@ -16,8 +32,19 @@ void Executor::execute_add(const Tensor& a, const Tensor& b, Tensor& output) {
         throw std::invalid_argument("Shapes are not broadcastable");
     }
     
-    // Use naive CPU path for Phase 1
-    execute_add_cpu_naive(a, b, output);
+    // Use JIT if enabled, otherwise fall back to naive path
+    if (use_jit_) {
+        try {
+            GetJITExecutor()->execute_add_jit(a, b, output);
+            return;
+        } catch (const std::exception& e) {
+            // Fall back to naive path on error
+            // In production, you might want to log this
+            execute_add_cpu_naive(a, b, output);
+        }
+    } else {
+        execute_add_cpu_naive(a, b, output);
+    }
 }
 
 void Executor::execute_add_cpu_naive(const Tensor& a, const Tensor& b, Tensor& output) {

@@ -4,6 +4,10 @@ project(mlc)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
+# Find LLVM for Phase 2 code generation
+find_package(LLVM 14 REQUIRED CONFIG)
+message(STATUS "Found LLVM ${LLVM_PACKAGE_VERSION}")
+
 # Core library
 add_library(mlc_core
     src/core/tensor.cpp
@@ -14,12 +18,22 @@ add_library(mlc_core
     src/core/operation.h
     src/runtime/executor.cpp
     src/runtime/executor.h
+    src/runtime/jit_executor.cpp
+    src/runtime/jit_executor.h
 )
 
 # Enable PIC for static library so it can be linked into shared modules
 set_target_properties(mlc_core PROPERTIES POSITION_INDEPENDENT_CODE ON)
 
 target_include_directories(mlc_core PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/src)
+
+# Include LLVM headers (needed by jit_executor.h)
+target_include_directories(mlc_core PRIVATE ${LLVM_INCLUDE_DIRS})
+target_compile_definitions(mlc_core PRIVATE ${LLVM_DEFINITIONS})
+
+# Code generation library (Phase 2)
+add_subdirectory(src/codegen)
+target_link_libraries(mlc_core PUBLIC mlc_codegen)
 
 # Tests
 enable_testing()
@@ -36,6 +50,10 @@ add_executable(test_add tests/test_add.cpp)
 target_link_libraries(test_add mlc_core)
 add_test(NAME AddTest COMMAND test_add)
 
+add_executable(test_jit_executor tests/test_jit_executor.cpp)
+target_link_libraries(test_jit_executor mlc_core)
+add_test(NAME JITExecutorTest COMMAND test_jit_executor)
+
 # Python bindings
 find_package(pybind11 CONFIG)
 if(pybind11_FOUND)
@@ -46,6 +64,9 @@ if(pybind11_FOUND)
     
     # Link to our core library
     target_link_libraries(mlc_core_py PRIVATE mlc_core)
+    
+    # Add linker flags to handle LLVM relocations
+    target_link_options(mlc_core_py PRIVATE -Wl,--allow-shlib-undefined)
     
     # Set output directory for the built module
     set_target_properties(mlc_core_py PROPERTIES

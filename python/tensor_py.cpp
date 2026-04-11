@@ -3,6 +3,7 @@
 #include <stdexcept>
 #include "core/tensor.h"
 #include "core/operation.h"
+#include "runtime/executor.h"
 
 namespace py = pybind11;
 using namespace mlc;
@@ -132,11 +133,25 @@ PYBIND11_MODULE(mlc_core, m) {
        "Create empty tensor (uninitialized, same as zeros)");
     
     m.def("full", [](std::vector<int> shape, float value, Device device = Device::CPU) {
-        Tensor t(shape, device);
-        for (size_t i = 0; i < t.size(); ++i) {
-            t.data()[i] = value;
-        }
-        return t;
-    }, py::arg("shape"), py::arg("value"), py::arg("device") = Device::CPU,
-       "Create tensor filled with constant value");
+         Tensor t(shape, device);
+         for (size_t i = 0; i < t.size(); ++i) {
+             t.data()[i] = value;
+         }
+         return t;
+     }, py::arg("shape"), py::arg("value"), py::arg("device") = Device::CPU,
+        "Create tensor filled with constant value");
+    
+    // JIT Execution Control
+    m.def("set_use_jit", &Executor::SetUseJIT, py::arg("use_jit"),
+          "Enable/disable JIT compilation for tensor operations (enabled by default)");
+    
+    m.def("get_use_jit", &Executor::GetUseJIT,
+          "Check if JIT compilation is enabled");
+    
+    // Additional utility functions
+    m.def("enable_jit", []() { Executor::SetUseJIT(true); },
+          "Enable JIT compilation");
+    
+    m.def("disable_jit", []() { Executor::SetUseJIT(false); },
+          "Disable JIT compilation (uses naive CPU path)");
 }
